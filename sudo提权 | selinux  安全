@@ -1,0 +1,477 @@
+linux基本防护
+用户账号安全
+chage命令
+
+用法：chage [选项] 登录
+
+选项：
+  -d, --lastday 最近日期        	#将最近一次密码设置时间设为“最近日期”
+  -E, --expiredate 过期日期    	 #将帐户过期时间设为“过期日期”
+  -h, --help                    #显示此帮助信息并推出
+  -I, --inactive INACITVE       #过期 INACTIVE 天数后，设定密码为失效状态
+  -l, --list                    #显示帐户年龄信息
+  -m, --mindays 最小天数      	  #将两次改变密码之间相距的最小天数设为“最小天数”
+  -M, --maxdays 最大天数       	 #将两次改变密码之间相距的最大天数设为“最大天数”
+  -R, --root CHROOT_DIR         #chroot 到的目录
+  -W, --warndays 警告天数      	 #将过期警告天数设为“警告天数”
+
+使用chage工具
+  -d 	0 , 强制修改密码
+ #-d 0 , 强制修改密码    新用户登录要修改密码,密码首次需要策略(包含字母.数字.)
+
+  -E  	yyyy-mm-dd  ,  指定失效日
+~]# chage   -l  zhangsan
+#查看账户信息
+
+
+
+账号的锁定/解锁
+			使用passwd命令
+		-l 锁定       -u  解锁      -S  看状态
+
+
+
+passwd命令
+格式 :  passwd [选项...] <帐号名称>   
+
+选项:
+  -k, --keep-tokens       #保持身份验证令牌不过期
+  -d, --delete            #删除已命名帐号的密码(只有根用户才能进行此操作)
+  -l, --lock              #锁定指名帐户的密码(仅限 root 用户)
+  -u, --unlock            #解锁指名账户的密码(仅限 root 用户)
+  -e, --expire            #终止指名帐户的密码(仅限 root 用户)
+  -f, --force             #强制执行操作
+  -x, --maximum=DAYS      #密码的最长有效时限(只有根用户才能进行此操作)
+  -n, --minimum=DAYS      #密码的最短有效时限(只有根用户才能进行此操作)
+  -w, --warning=DAYS      #在密码过期前多少天开始提醒用户(只有根用户才能进行此操作)
+  -i, --inactive=DAYS     #当密码过期后经过多少天该帐号会被禁用(只有根用户才能进行此操作)
+  -S, --status            #报告已命名帐号的密码状态(只有根用户才能进行此操作)
+  --stdin                 #从标准输入读取令牌(只有根用户才能进行此操作)
+
+强制定期修改密码
+   所有新添加的新用户都要遵循配置文件/etc/login.defs 
+配置文件/etc/login.defs        -----对新建的用户有效
+
+~]# grep -v '#'  /etc/login.defs 
+
+MAIL_DIR	/var/spool/mail
+#创建用户时，要在目录/var/spool/mail中创建一个用户mail文件
+
+PASS_MAX_DAYS	99999			#密码最大有效期
+PASS_MIN_DAYS	0					#两次修改密码的最小间隔时间
+PASS_MIN_LEN	5						#密码最小长度，对于root无效
+PASS_WARN_AGE	7					#密码过期前多少天开始提示
+
+UID_MIN                  1000			#用户ID的最小值
+UID_MAX                 60000		#用户ID的最大值
+SYS_UID_MIN               201
+SYS_UID_MAX               999
+
+GID_MIN                  1000
+GID_MAX                 60000
+SYS_GID_MIN               201
+SYS_GID_MAX               999
+
+
+CREATE_HOME	yes					#使用useradd的时候是够创建用户目录
+
+UMASK           077				
+
+USERGROUPS_ENAB yes		
+
+ENCRYPT_METHOD SHA512 
+#用SHA512 加密密码
+
+
+
+
+
+伪装登录提示:
+
+适用于本地:
+~]# cat /etc/issue
+\S
+Kernel \r on an \m
+#默认内容会提示内核,系统等版本信息
+
+适用于远程登录:
+~]# cat /etc/issue.net 
+\S
+Kernel \r on an \m
+#默认内容会提示内核,系统等版本信息
+
+文件系统安全;
+
+禁用非必要的系统服务RHEL7操作系统
+~]# systemctl disable httpd
+#禁止开机自启
+
+禁用非必要的系统服务RHEL6操作系统
+~]# chkconfig httpd off
+#禁止开机自启
+~]# chkconfig httpd on
+#开机自启
+
+锁定/解锁保护文件(给文件加属性)
+EXT3 , EXT4 的文件属性控制
++ . - . = 控制方式
+
+chatter: 锁定文件，不能删除，不能更改
+
+
+~]# chattr -d  /etc/passwd
+#文件不可被删除
+
+~]# chattr +i  /etc/passwd       
+#加锁：文件不能删除，不能更改，不能移动
+
+~]# lsattr /etc/passwd      
+#查看加锁：文件加了一个参数 i 表示锁定
+
+~]# chattr -i /etc/passwd 
+#解锁： - 表示解除
+
+用户的切换与提权
+Substitute User (换人)
+快速切换为指定的其他用户
+普通用户执行是,需验证目标用户的口令
+root执行时,无需验证口令
+
+命令格式:
+用法一  su   [-]   [目标用户]
+用法二  su   [-]  -c  "命令"    [目标用户]
+
+su命令
+用法：
+ su [选项] [-] [USER [参数]...]
+
+将有效用户 id 和组 id 更改为 USER 的 id。
+单个 - 视为 -l。如果未指定 USER，将假定为 root。
+
+选项：
+ -m, -p, --preserve-environment  	#不重置环境变量
+ -g, --group <组>            		#指定主组
+ -G, --supp-group <组>        		#指定一个辅助组
+
+ -, -l, --login                  	#使 shell 成为登录 shell
+ -c, --command <命令>            	#使用 -c 向 shell 传递一条命令
+ --session-command <命令>        	#使用 -c 向 shell 传递一条命令
+                                 		#而不创建新会话
+ -f, --fast                      	#向shell 传递 -f 选项(csh 或 tcsh)
+ -s, --shell <shell>             	#若 /etc/shells 允许，则运行 shell
+
+ -h, --help     				#显示此帮助并退出
+ -V, --version  				#输出版本信息并退出
+
+记录su操作的日志文件
+~]# vim /var/log/secure
+
+
+用户提权sudo  (设置系统普通用户可以执行root用户命令的权限)
+主配置文件  /etc/sudoers
+打开主配置文件的方法
+1. visudo
+2. vim  /etc/sudoers
+
+提权格式：
+1 : 普通用户名  主机名列表=命令列表（必须写命令的绝对路径）
+2 : %用户名  主机名列表=命令列表
+
+普通用户查看提权命令  sudo -l （必须输入自己登陆系统的密码才能够查看）
+
+sudo(选项)(参数)
+选项
+
+选项	说明
+-b	在后台执行指令；
+-h	显示帮助；
+-H	将HOME环境变量设为新身份的HOME环境变量；
+-k	结束密码的有效期限，也就是下次再执行sudo时便需要输入密码；。
+-l	列出目前用户可执行与无法执行的指令；
+-p	改变询问密码的提示符号；
+-s<shell>	执行指定的shell；
+-u<用户>	以指定的用户作为新的身份。若不加上此参数，则预设以root作为新的身份；
+-v	延长密码有效期限5分钟；
+-V	显示版本信息。
+-S  从标准输入流替代终端来获取密码
+
+sudo 程序相关文件
+/etc/sudoers
+/etc/init.d/sudo
+/etc/pam.d/sudo
+/var/lib/sudo
+/usr/share/doc/sudo
+/usr/share/lintian/overrides/sudo
+/usr/share/bash-completion/completions/sudo
+/usr/bin/sudo
+/usr/lib/sudo
+
+
+~]# /etc/sudoers
+root　　　　表示 root 用户。
+ALL　　 　　表示从任何的主机上都可以执行，也可以这样 192.168.4.0/24。
+(ALL:ALL) 　 是以谁的身份来执行，ALL:ALL 就代表 root 可以任何人的身份来执行命令。
+ALL 　　　　表示任何命令。
+那么整条规则就是 root 
+用户可以在任何主机以任何人的身份来执行所有的命令。
+
+!: 取反
+
+设置 sudo 时不需要输入密码:
+只需要在配置行中添加 NOPASSWD: 就可以了：
+
+******    ALL=(ALL) NOPASSWD: ALL
+
+
+	启用日志文件
+	~]# vim /etc/sudoers
+	Defaults  logfile="/var/log/sudo"
+
+	~]# cat /var/log/sudo 
+	#查看日志  提权用户的操作
+	Jul 27 11:46:18 : bob : TTY=pts/0 ; PWD=/home/bob ; USER=root ; COMMAND=/bin/vim
+      /etc/my.cnf
+
+	配置别名	(别名名称必须是大写字母)
+	用户别名 	User_Alias 别名
+	主机别名 	Host_Alias 别名名称=值列表
+	命令别名 	Cmnd_Ailas 别名名称
+
+
+
+
+
+
+
+
+
+
+3.SSH访问控制
+	3.1 SSH基本防护
+		3.1.1 sshd服务运行参数
+	配置文件/etc/ssh/sshd_config
+	POrt 3389		#改用非标准端口
+	Protocol 2 		#启用SSH V2版协议
+	ListenAddress 192.168.168.174	
+	PermitRootLogin no  #禁止root登录
+	UseDNS no		#不解析客户机地址
+	LoginGraceTime 1m	#登录限时
+	MaxAuthTries 3 	#每连接最多认证次数
+	
+
+
+
+		3.1.2 设置用户黑白名单(控制客户端来连接使用的用户)			
+			白名单 定义仅允许连接用户
+			AllowUsers USER@HOST USER2 ...
+			AllowGroups GrROUP1 GROUP2 ...
+
+	]# vim /etc/ssh/sshd_config 	
+	Allowusers root@192.168.2.254 dc mike jj
+
+	]# service sshd reload
+	#重新加载sshd服务   
+	
+
+			黑名单 定义仅不允许连接的用户
+			DenyUsers USER1 USER2 ...
+			DenyUsers GROUP1 GROUP2 ...
+
+	]# vim /etc/ssh/sshd_config
+	Denyusers mike dc
+	
+		3.2 SSH密钥对验证
+		* ssh服务验证用户登陆的方式有两种：1 口令 2 密钥对
+	
+	PasswordAuthentication yes
+	#允许密码验证登录远程
+	#PubkeyAuthentication yes
+	#允许密钥对认证登录
+	AuthorizedKeysFile      .ssh/authorized_keys
+	#公钥库:存放授权客户机的公钥文本
+		
+			3.2.1配置主机仅允许密钥对认证登陆
+				1.创建密钥对
+				可以手动指定加密算法(-t rsa或 -t dsa)
+				若不指定,默认采用RSA加密
+					]# rm -rf ~/.ssh
+					]# ssh-keygen 
+					]# ls ~/.ssh/
+
+				2.把公钥文件传给目标服务器
+					]# ssh-copy-id root@192.168.2.100
+				2.100主机：
+					]# ls ~/.ssh/
+					authorized_keys  id_rsa(私钥)  id_rsa.pub(公钥)
+				
+				1.修改配置文件禁止口令认证登陆
+					]# systemctl restart sshd
+					PasswordAuthentication no
+				2.重启sshd服务
+					]# systemctl restart sshd
+					]# whoami
+					#查看当前登录的用户名
+
+4.SElinux安全防护
+	4.1 SElinux介绍
+Security-Enhanced Linux
+一套强化linux安全的扩展模块
+美国国家安全局主导开发
+	
+SELinux的运作机制
+集成到Linux内核(2.6及以上)
+操作系统提供可制定的策略,管理工具
+
+红帽的SELinux策略集
+SELINUXTYPE=targeted
+推荐,仅保护最常见/关键的网络服务,其他不限制
+主要软件包:
+selinux-policy  selinux-policy-targeted
+libselinux-utils	libselinux-utils
+coreutils	policycoreutils
+
+]# sestatus
+#查看selinux状态
+
+[root@proxy ~]# vim /etc/selinux/config
+SELINUX=enforcing                                #设置SELinux为强制模式
+SELINUXTYPE=targeted                            #保护策略为保护主要的网络服务安全
+
+
+[root@proxy ~]# getenforce                        #查看当前状态为警告模式
+Permissive
+[root@proxy ~]# setenforce 1                      #设置SELinux为强制模式
+[root@proxy ~]# getenforce                        #查看当前模式为强制模式
+Enforcing
+[root@proxy ~]# setenforce 0                     #设置SELinux为强制模式
+[root@proxy ~]# getenforce                       #查看当前模式为警告模式
+Permissive
+	
+
+	4.2 查看安全上下文
+		文件  ls -lZ
+		目录  ls -ldZ
+		进程  ps aux -Z 
+属性构成
+用户：角色：访问类型：选项...
+system_u:system_r:httpd_t:s0 
+
+一般操作规律：
+移动的文件：原有的上下文属性不变
+复制的文件：自动继承目标位置的上下文
+新建的文件：自动继承父目录的属性
+
+修改文件上下文
+chcon -t 指定访问类型
+chcon -R 递归修改
+
+在SELinux启用状态下，调整策略打开vsftpd服务的匿名上传访问
+1）配置一个允许匿名上传的vsftpd服务作为测试环境
+[root@proxy ~]# setenforce 1
+[root@proxy ~]# yum -y install vsftpd
+.. ..
+[root@proxy ~]# vim /etc/vsftpd/vsftpd.conf
+anonymous_enable=YES                                #开启匿名访问
+anon_upload_enable=YES                             #允许上传文件
+anon_mkdir_write_enable=YES                          #允许上传目录
+[root@proxy ~]# systemctl start vsftpd                #启动服务
+//默认Vsftpd共享目录为/var/ftp/
+步骤三：从/root目录下移动2个包文件到FTP下载目录，调整文件的安全上下文
+1）建立两个FTP下载用的测试文件
+由root用户创建两个测试压缩包，一个直接建立到/var/ftp/目录下，另一个先在/root/下建立，然后移动至/var/ftp/目录。
+//测试文件1，直接在ftp目录下创建文件
+[root@proxy ~]# tar -czf  /var/ftp/log1.tar  /var/log
+[root@proxy ~]# ls -lh /var/ftp/
+-rw-r--r--. 1 root root 8M 8月  16 10:16 log1.tar
+[root@proxy ~]# ls -Z /var/ftp/
+-rw-r--r--. root root unconfined_u:object_r:public_content_t:s0 log1.tar
+//测试文件2，在/root下建立，然后移动至/var/ftp目录
+[root@proxy ~]# tar -czf  log2.tar  /var/log
+[root@proxy ~]# mv log2.tar /var/ftp/
+[root@proxy ~]# ls -lh /var/ftp/
+-rw-r--r--. 1 root root 8M 8月  16 10:16 log2.tar
+[root@proxy ~]# ls -Z /var/ftp/
+-rw-r--r--. 1 root root unconfined_u:object_r:admin_home_t:s0 log2.tar
+3）通过FTP方式测试下载
+使用wget命令分别下载这两个包文件，第二个包将会下载失败（看不到文件）。
+[root@proxy ~]# wget ftp://192.168.4.5/log1.tar            #下载第一个文件，成功
+[root@proxy ~]# wget ftp://192.168.4.5/log2.tar            #下载第二个文件，失败
+4）检查该测试包的安全上下文，正确调整后再次下载第二个包成功。
+文件已经存放到共享目录下，但客户端无法访问下载，是因为被SELinux拦截了！
+[root@proxy ~]# ls -Z /var/ftp/
+-rw-r--r--. root root unconfined_u:object_r:public_content_t:s0 log1.tar
+-rw-r--r--. 1 root root unconfined_u:object_r:admin_home_t:s0   log2.tar
+[root@proxy ~]# chcon -t public_content_t /var/ftp/d2.tar.gz
+[root@proxy ~]# ls -Z /var/ftp/log2.tar
+-rw-r--r--. root root unconfined_u:object_r:public_content_t:s0 log2.tar
+[root@proxy ~]# wget ftp://192.168.4.5/log2.tar            #再次下载，成功
+注意：上例中的chcon操作可替换为（效果相同）：
+# restorecon /var/ftp/log2.tar.gz
+或者
+# chcon --reference=/var/ftp/log1.tar.gz /var/ftp/log2.tar.gz
+
+
+恢复文件上下文
+使用restorecon工具
+-恢复为所在位置的默认上下文属性
+- -R，递归修改
+/.autorelabel文件
+-下次重启后全部重置
+ 
+	3.3调整SElinux布尔值
+使用 getsebool 查看  
+-a   	#列出所有的布尔值
+
+使用 setsebool 设置
+-p 	#永久更改,重启后仍然有效
+
+
+4.5 调整selinux布尔值（功能开关）
+ 1.查看SElinux布尔值
+ 】#getsebool -a 
+ 】#getsebool -a | grep ftpd
+ 】#getsebool -a | grep httpd
+
+
+
+ 在50主机运行ftp服务，要求如下：允许匿名用户对/var/ftp/share 目录有上传和下载文件的权限。
+ 
+ [root@host51 ~]# yum -y install vsftpd
+ [root@host51 ~]# systemctl restart vsftpd
+[root@host51 ~]# mkdir o+w  /var/ftp/share
+[root@host51 ~]# vim +29 /etc/vsftpd/vsftpd.conf 
+[root@host51 ~]# systemctl restart vsftpd
+[root@host51 ~]# cp /etc/passwd /var/ftp/share
+
+ 
+ [root@host51 ~]# vim +42 /etc/httpd/conf/httpd.conf 
+[root@host51 ~]# systemctl restart httpd
+Job for httpd.service failed because the control process exited with error code. See "systemctl status httpd.service" and "journalctl -xe" for details.
+
+
+[root@host51 ~]# yum list | grep shoot
+setroubleshoot.x86_64                     3.2.29-3.el7               local_repo 
+setroubleshoot-plugins.noarch             3.0.66-2.1.el7             local_repo 
+setroubleshoot-server.x86_64              3.2.29-3.el7               local_repo 
+[root@host51 ~]# yum -y install setroubleshoot.*
+.........
+[root@host51 ~]# reboot
+
+[root@host51 ~]# systemctl restart httpd
+[root@host51 ~]# grep setroubleshoot /var/log/messages
+Aug 26 10:35:41 host51 yum[1520]: Installed: setroubleshoot-plugins-3.0.66-2.1.el7.noarch
+Aug 26 10:35:42 host51 yum[1520]: Installed: setroubleshoot-server-3.2.29-3.el7.x86_64
+Aug 26 10:35:43 host51 yum[1520]: Installed: setroubleshoot-3.2.29-3.el7.x86_64
+Aug 26 10:36:25 host51 setroubleshoot: SELinux is preventing /usr/sbin/httpd from name_bind access on the tcp_socket port 8070. For complete SELinux messages run: se48dc-488e-8357-0a29d6fa7ca8
+Aug 26 10:37:35 host51 setroubleshoot: SELinux is preventing /usr/sbin/httpd from name_bind access on the tcp_socket port 8070. For complete SELinux messages run: se48dc-488e-8357-0a29d6fa7ca8
+
+[root@host51 ~]# sealert -l 78c274a9-48dc-488e-8357-0a29d6fa7ca8
+[root@host51 ~]# semanage port -a -t http_port_t -p tcp 8070
+[root@host51 ~]# systemctl restart httpd
+[root@host51 ~]# ss -ntulp | grep 8070
+ 
+ 
+ 
+ 
+ 
+
